@@ -3,6 +3,7 @@ import pandas as pd
 from prefect import flow, task
 from prefect_gcp.cloud_storage import GcsBucket
 from random import randint
+import os
 
 
 @task(retries=3)
@@ -20,7 +21,6 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
     """Fix dtype issues"""
     df["tpep_pickup_datetime"] = pd.to_datetime(df["tpep_pickup_datetime"])
     df["tpep_dropoff_datetime"] = pd.to_datetime(df["tpep_dropoff_datetime"])
-    print(df.head(2))
     print(f"columns: {df.dtypes}")
     print(f"rows: {len(df)}")
     return df
@@ -30,6 +30,8 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
 def write_local(df: pd.DataFrame, color: str, dataset_file: str) -> Path:
     """Write DataFrame out locally as parquet file"""
     path = Path(f"data/{color}/{dataset_file}.parquet")
+    if not os.path.exists(f"data/{color}"):
+        os.makedirs(f"data/{color}")
     df.to_parquet(path, compression="gzip")
     return path
 
@@ -37,17 +39,16 @@ def write_local(df: pd.DataFrame, color: str, dataset_file: str) -> Path:
 @task()
 def write_gcs(path: Path) -> None:
     """Upload local parquet file to GCS"""
-    gcs_block = GcsBucket.load("zoom-gcs")
+    gcs_block = GcsBucket.load("bucket-majestic-poetry-375216")
     gcs_block.upload_from_path(from_path=path, to_path=path)
     return
 
 
 @flow()
-def etl_web_to_gcs() -> None:
+def etl_web_to_gcs(
+    color: str = "yellow", year: int = 2020, month: int = 3
+) -> None:
     """The main ETL function"""
-    color = "yellow"
-    year = 2021
-    month = 1
     dataset_file = f"{color}_tripdata_{year}-{month:02}"
     dataset_url = f"https://github.com/DataTalksClub/nyc-tlc-data/releases/download/{color}/{dataset_file}.csv.gz"
 
