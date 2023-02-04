@@ -5,6 +5,7 @@ from prefect_gcp.cloud_storage import GcsBucket
 from random import randint
 from prefect.tasks import task_input_hash
 from datetime import timedelta
+import os
 
 
 @task(retries=3, cache_key_fn=task_input_hash, cache_expiration=timedelta(days=1))
@@ -32,6 +33,8 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
 def write_local(df: pd.DataFrame, color: str, dataset_file: str) -> Path:
     """Write DataFrame out locally as parquet file"""
     path = Path(f"data/{color}/{dataset_file}.parquet")
+    if not os.path.exists(f"data/{color}"):
+        os.makedirs(f"data/{color}")
     df.to_parquet(path, compression="gzip")
     return path
 
@@ -39,7 +42,7 @@ def write_local(df: pd.DataFrame, color: str, dataset_file: str) -> Path:
 @task()
 def write_gcs(path: Path) -> None:
     """Upload local parquet file to GCS"""
-    gcs_block = GcsBucket.load("zoom-gcs")
+    gcs_block = GcsBucket.load("bucket-majestic-poetry-375216")
     gcs_block.upload_from_path(from_path=path, to_path=path)
     return
 

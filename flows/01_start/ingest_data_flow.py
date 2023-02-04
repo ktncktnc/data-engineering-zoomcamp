@@ -52,7 +52,6 @@ def log_subflow(table_name: str):
 
 @flow(name="Ingest Data")
 def main_flow(table_name: str = "yellow_taxi_trips"):
-
     csv_url = "https://github.com/DataTalksClub/nyc-tlc-data/releases/download/yellow/yellow_tripdata_2021-01.csv.gz"
     log_subflow(table_name)
     raw_data = extract_data(csv_url)
